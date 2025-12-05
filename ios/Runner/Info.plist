@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Bu uygulama, ofise yakın olduğunuzda kapıyı açabilmek için konumunuza ihtiyaç duyar.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Bu uygulama, ofise yakın olduğunuzda kapıyı açabilmek için konumunuza ihtiyaç duyar.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Bu uygulama, ofise yakın olduğunuzda kapıyı açabilmek için konumunuza ihtiyaç duyar.</string>
 </dict>
 </plist>
