@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "841271160808",
+    "firebase_url": "https://fundmatch-d3750-default-rtdb.firebaseio.com",
+    "project_id": "fundmatch-d3750",
+    "storage_bucket": "fundmatch-d3750.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:841271160808:android:e85b49cf64db33e0d1be5d",
+        "android_client_info": {
+          "package_name": "com.example.office_control"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "841271160808-io1ft2qjvnq2oko58olo00lquq68khdh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLelcRwy8ICNRdPmzc3qD8frZ92gUhqeY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "841271160808-io1ft2qjvnq2oko58olo00lquq68khdh.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "841271160808-bv5lheolemhn37jp6b96sht2ikml80d8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.oncodedapp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

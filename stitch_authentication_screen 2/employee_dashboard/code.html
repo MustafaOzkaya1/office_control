@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Smart Office Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+    </style>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {primary: "#FAC638", "background-light": "#f8f8f5", "background-dark": "#231e0f"}, fontFamily: {display: "Manrope"}, borderRadius: {DEFAULT: "0.5rem", lg: "1rem", xl: "1.5rem", full: "9999px"}}}};</script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body>
+<div class="relative flex min-h-screen w-full flex-col bg-background-light dark:bg-background-dark font-display text-gray-800 dark:text-gray-200" style="padding-bottom: 96px;">
+<!-- Top App Bar -->
+<div class="sticky top-0 z-10 flex flex-col gap-2 bg-background-light/80 p-4 pb-2 backdrop-blur-sm dark:bg-background-dark/80">
+<div class="flex h-12 items-center justify-between">
+<div class="flex size-12 shrink-0 items-center">
+<div class="aspect-square size-10 rounded-full bg-cover bg-center" data-alt="Profile picture of Alex" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCfuDSwdM_5SpylE-w7lPTDZhaa5gnxhFXLaKXV53_QXdStwoPzyRCT3c73G2n3dxqeGb7NTywoXMkCH9KG6dUGBjdqalVKrMHBQ8HZyL0zHIDfJ6aTGqxfOwptxmfd9V2AqDpXwXICuUtT1nzECUpBsOmzzUAE79i_neXwUEMtzZiZZ9ivrzf1Orxb5oCy7rj2HYQY97Iy1xoWzymjcp7PFCUCDpdJ_Rv5gpJfpb8eIN6bEWBiaGwxa3DQMeMCvsjI2IzxsgFn2JSB");'></div>
+</div>
+<div class="flex w-12 items-center justify-end">
+<button class="flex h-12 cursor-pointer items-center justify-center overflow-hidden rounded-lg bg-transparent text-gray-600 dark:text-white">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</div>
+<p class="tracking-light text-[28px] font-bold leading-tight text-gray-900 dark:text-white">Welcome, Alex</p>
+</div>
+<!-- Door Access Card -->
+<div class="p-4 @container">
+<div class="flex flex-col items-stretch justify-start rounded-xl bg-white shadow-sm dark:bg-gray-800/50 dark:border dark:border-white/10">
+<div class="flex w-full grow flex-col items-stretch justify-center gap-1 p-4">
+<p class="text-lg font-bold leading-tight tracking-[-0.015em] text-gray-900 dark:text-white">Door Access</p>
+<p class="text-base font-normal leading-normal text-gray-500 dark:text-gray-400">Unlock office doors with your phone</p>
+</div>
+<div class="flex flex-1 flex-wrap justify-between gap-3 px-4 pb-4">
+<button class="flex flex-1 min-w-[150px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg bg-primary h-12 px-5 text-base font-bold leading-normal tracking-[0.015em] text-white">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+<span class="truncate">Scan QR Code</span>
+</button>
+<button class="flex flex-1 min-w-[150px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg bg-gray-200 h-12 px-5 text-base font-bold leading-normal tracking-[0.015em] text-gray-800 dark:bg-white/10 dark:text-white">
+<span class="material-symbols-outlined">bluetooth</span>
+<span class="truncate">Open with Bluetooth</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Today's Summary Section -->
+<h3 class="px-4 pb-2 pt-4 text-lg font-bold leading-tight tracking-[-0.015em] text-gray-900 dark:text-white">Today's Summary</h3>
+<div class="flex flex-wrap gap-4 p-4 pt-0">
+<div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-gray-800/50">
+<p class="text-base font-medium leading-normal text-gray-500 dark:text-gray-400">Total Hours Worked</p>
+<p class="tracking-light text-2xl font-bold leading-tight text-gray-900 dark:text-white">6h 32m</p>
+</div>
+<div class="flex min-w-[158px] flex-1 flex-col gap-2 rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-gray-800/50">
+<p class="text-base font-medium leading-normal text-gray-500 dark:text-gray-400">Latest Activity</p>
+<p class="tracking-light text-2xl font-bold leading-tight text-gray-900 dark:text-white">Left at 4:15 PM</p>
+</div>
+</div>
+<!-- Timeline Section -->
+<div class="px-4">
+<div class="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-gray-800/50">
+<div class="flex justify-between">
+<h3 class="text-lg font-bold leading-tight tracking-[-0.015em] text-gray-900 dark:text-white">Today's Timeline</h3>
+<a class="text-sm font-semibold text-primary" href="#">View All</a>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-4">
+<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined">logout</span>
+</div>
+<div class="flex-1">
+<p class="font-semibold text-gray-800 dark:text-white">Left Main Office</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">4:15 PM</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined">login</span>
+</div>
+<div class="flex-1">
+<p class="font-semibold text-gray-800 dark:text-white">Entered Main Office</p>
+<p class="text-sm text-gray-500 dark:text-gray-400">9:02 AM</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Task List Section -->
+<div class="px-4 py-4">
+<div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-gray-800/50">
+<div class="mb-4 flex items-center justify-between">
+<h3 class="text-lg font-bold leading-tight tracking-[-0.015em] text-gray-900 dark:text-white">My Tasks</h3>
+<button class="text-sm font-semibold text-primary">Filter</button>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Task Item 1 -->
+<div class="flex items-center justify-between rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-white/5">
+<div class="flex flex-col">
+<p class="font-semibold text-gray-800 dark:text-white">Finalize Q3 report slides</p>
+<span class="mt-1 inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/50 dark:text-green-300">Done</span>
+</div>
+<button class="text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<!-- Task Item 2 -->
+<div class="flex items-center justify-between rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-white/5">
+<div class="flex flex-col">
+<p class="font-semibold text-gray-800 dark:text-white">User testing for new feature</p>
+<span class="mt-1 inline-flex items-center rounded-md bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400">In Progress</span>
+</div>
+<button class="text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+<!-- Task Item 3 -->
+<div class="flex items-center justify-between rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-white/5">
+<div class="flex flex-col">
+<p class="font-semibold text-gray-800 dark:text-white">Update project documentation</p>
+<span class="mt-1 inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700/50 dark:text-gray-400">To-Do</span>
+</div>
+<button class="text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating Action Button -->
+<div class="fixed bottom-24 right-4 z-20">
+<button class="flex h-14 w-14 cursor-pointer items-center justify-center overflow-hidden rounded-full bg-primary text-white shadow-lg">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</div>
+<!-- Bottom Navigation Bar -->
+<div class="fixed bottom-0 left-0 right-0 z-10 border-t border-gray-200 bg-background-light/80 backdrop-blur-sm dark:border-white/10 dark:bg-background-dark/80">
+<div class="flex h-20 items-center justify-around px-4">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-xs font-semibold">Dashboard</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined">person</span>
+<span class="text-xs font-semibold">Profile</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-xs font-semibold">Settings</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>
