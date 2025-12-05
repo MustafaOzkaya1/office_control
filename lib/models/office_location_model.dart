@@ -12,7 +12,7 @@ class OfficeLocation {
     required this.name,
     required this.latitude,
     required this.longitude,
-    this.radiusMeters = 10.0,
+    this.radiusMeters = 100.0,
     this.espIpAddress,
     this.espSsid,
   });
@@ -35,7 +35,7 @@ class OfficeLocation {
       name: map['name'] ?? '',
       latitude: (map['latitude'] ?? 0.0).toDouble(),
       longitude: (map['longitude'] ?? 0.0).toDouble(),
-      radiusMeters: (map['radiusMeters'] ?? 10.0).toDouble(),
+      radiusMeters: (map['radiusMeters'] ?? 100.0).toDouble(),
       espIpAddress: map['espIpAddress'],
       espSsid: map['espSsid'],
     );

@@ -24,9 +24,9 @@ class DatabaseService {
   Future<UserModel?> getUser(String uid) async {
     final snapshot = await _usersRef.child(uid).get();
     if (!snapshot.exists || snapshot.value == null) return null;
-    
+
     final data = Map<String, dynamic>.from(snapshot.value as Map);
-    
+
     if (data['role'] == UserRole.admin.name) {
       return Admin.fromMap(data);
     }
@@ -51,7 +51,7 @@ class DatabaseService {
   Future<List<UserModel>> getAllUsers() async {
     final snapshot = await _usersRef.get();
     if (!snapshot.exists || snapshot.value == null) return [];
-    
+
     final data = Map<String, dynamic>.from(snapshot.value as Map);
     return data.values.map((v) {
       final userData = Map<String, dynamic>.from(v);
@@ -77,11 +77,9 @@ class DatabaseService {
   }
 
   Stream<List<AccessRequestModel>> pendingRequestsStream() {
-    return _requestsRef
-        .orderByChild('status')
-        .equalTo('pending')
-        .onValue
-        .map((event) {
+    return _requestsRef.orderByChild('status').equalTo('pending').onValue.map((
+      event,
+    ) {
       if (!event.snapshot.exists || event.snapshot.value == null) return [];
       final data = Map<String, dynamic>.from(event.snapshot.value as Map);
       return data.values
@@ -96,9 +94,9 @@ class DatabaseService {
         .orderByChild('status')
         .equalTo('pending')
         .get();
-    
+
     if (!snapshot.exists || snapshot.value == null) return [];
-    
+
     final data = Map<String, dynamic>.from(snapshot.value as Map);
     return data.values
         .map((v) => AccessRequestModel.fromMap(Map<String, dynamic>.from(v)))
@@ -114,7 +112,11 @@ class DatabaseService {
     });
   }
 
-  Future<void> rejectRequest(String requestId, String adminUid, String reason) async {
+  Future<void> rejectRequest(
+    String requestId,
+    String adminUid,
+    String reason,
+  ) async {
     await _requestsRef.child(requestId).update({
       'status': RequestStatus.rejected.name,
       'processedAt': DateTime.now().toIso8601String(),
@@ -130,7 +132,8 @@ class DatabaseService {
 
   // ==================== TASK OPERATIONS ====================
 
-  DatabaseReference _userTasksRef(String uid) => _usersRef.child(uid).child('tasks');
+  DatabaseReference _userTasksRef(String uid) =>
+      _usersRef.child(uid).child('tasks');
 
   Future<void> createTask(TaskModel task) async {
     await _userTasksRef(task.userId).child(task.id).set(task.toMap());
@@ -193,11 +196,11 @@ class DatabaseService {
 
   Future<void> recordAttendance(AttendanceRecord record) async {
     final dateKey = DateFormat('yyyy-MM-dd').format(record.timestamp);
-    await _userAttendanceRef(record.userId, dateKey)
-        .child('records')
-        .child(record.id)
-        .set(record.toMap());
-    
+    await _userAttendanceRef(
+      record.userId,
+      dateKey,
+    ).child('records').child(record.id).set(record.toMap());
+
     // Update total minutes
     final attendance = await getDailyAttendance(record.userId, dateKey);
     if (attendance != null) {
@@ -210,10 +213,13 @@ class DatabaseService {
     }
   }
 
-  Future<DailyAttendance?> getDailyAttendance(String userId, String date) async {
+  Future<DailyAttendance?> getDailyAttendance(
+    String userId,
+    String date,
+  ) async {
     final snapshot = await _userAttendanceRef(userId, date).get();
     if (!snapshot.exists || snapshot.value == null) return null;
-    
+
     final data = Map<String, dynamic>.from(snapshot.value as Map);
     return DailyAttendance.fromMap(data);
   }
@@ -230,18 +236,23 @@ class DatabaseService {
     });
   }
 
-  Future<List<DailyAttendance>> getAttendanceHistory(String userId, {int days = 30}) async {
+  Future<List<DailyAttendance>> getAttendanceHistory(
+    String userId, {
+    int days = 30,
+  }) async {
     final attendances = <DailyAttendance>[];
     final now = DateTime.now();
-    
+
     for (int i = 0; i < days; i++) {
-      final date = DateFormat('yyyy-MM-dd').format(now.subtract(Duration(days: i)));
+      final date = DateFormat(
+        'yyyy-MM-dd',
+      ).format(now.subtract(Duration(days: i)));
       final attendance = await getDailyAttendance(userId, date);
       if (attendance != null) {
         attendances.add(attendance);
       }
     }
-    
+
     return attendances;
   }
 
@@ -265,7 +276,77 @@ class DatabaseService {
   }
 
   Future<void> updateOfficeLocation(OfficeLocation location) async {
-    await _officeRef.child('location').set(location.toMap());
+    try {
+      final locationMap = location.toMap();
+      // Debug: Kaydedilecek veriyi kontrol et
+      print('📍 Office location kaydediliyor:');
+      print('   ID: ${location.id}');
+      print('   Name: ${location.name}');
+      print('   Latitude: ${location.latitude}');
+      print('   Longitude: ${location.longitude}');
+      print('   Radius: ${location.radiusMeters}m');
+
+      await _officeRef.child('location').set(locationMap);
+
+      // Kayıt sonrası kontrol
+      final saved = await getOfficeLocation();
+      if (saved != null) {
+        print('✅ Office location başarıyla kaydedildi');
+        print('   Kaydedilen Latitude: ${saved.latitude}');
+        print('   Kaydedilen Longitude: ${saved.longitude}');
+      } else {
+        print('⚠️ Office location kaydedildi ama okunamadı');
+      }
+    } catch (e, stackTrace) {
+      print('❌ Office location kaydetme hatası: $e');
+      print('Stack trace: $stackTrace');
+      rethrow; // Hatayı yukarı fırlat ki UI'da gösterilebilsin
+    }
+  }
+
+  // ==================== PATRON KOMUT OPERATIONS ====================
+
+  /// Patron komut durumunu alır (root'ta /patronkomut)
+  Future<bool> getPatronKomut() async {
+    final snapshot = await _db.ref('patronkomut').get();
+    if (!snapshot.exists || snapshot.value == null) return false;
+    return snapshot.value as bool;
+  }
+
+  /// Patron komut durumunu günceller (root'ta /patronkomut)
+  Future<void> setPatronKomut(bool value) async {
+    await _db.ref('patronkomut').set(value);
+  }
+
+  /// Patron komut durumunu dinler (root'ta /patronkomut)
+  Stream<bool> patronKomutStream() {
+    return _db.ref('patronkomut').onValue.map((event) {
+      if (!event.snapshot.exists || event.snapshot.value == null) return false;
+      return event.snapshot.value as bool;
+    });
+  }
+
+  // ==================== KOMUT OPERATIONS (Kullanıcı kapı açma) ====================
+
+  /// /komut değerini alır
+  Future<bool> getKomut() async {
+    final snapshot = await _db.ref('komut').get();
+    if (!snapshot.exists || snapshot.value == null) return false;
+    return snapshot.value as bool;
+  }
+
+  /// /komut değerini günceller
+  Future<void> setKomut(bool value) async {
+    await _db.ref('komut').set(value);
+  }
+
+  /// /komut değerini true yapar ve 10 saniye sonra otomatik false yapar
+  Future<void> setKomutWithAutoReset() async {
+    await setKomut(true);
+    // 10 saniye sonra otomatik false yap
+    Future.delayed(const Duration(seconds: 10), () async {
+      await setKomut(false);
+    });
   }
 
   // ==================== NOTIFICATION OPERATIONS ====================
@@ -289,24 +370,27 @@ class DatabaseService {
   Stream<List<NotificationModel>> notificationsStream({String? userId}) {
     return _notificationsRef.onValue.map((event) {
       if (!event.snapshot.exists || event.snapshot.value == null) return [];
-      
+
       final data = Map<String, dynamic>.from(event.snapshot.value as Map);
-      final notifications = data.values
-          .map((v) => NotificationModel.fromMap(Map<String, dynamic>.from(v)))
-          .where((n) {
-            // Filter out expired notifications
-            if (n.isExpired) return false;
-            // If targetUserIds is null, show to all users
-            if (n.targetUserIds == null) return true;
-            // If userId provided, check if user is in target list
-            if (userId != null) {
-              return n.targetUserIds!.contains(userId);
-            }
-            return true;
-          })
-          .toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      
+      final notifications =
+          data.values
+              .map(
+                (v) => NotificationModel.fromMap(Map<String, dynamic>.from(v)),
+              )
+              .where((n) {
+                // Filter out expired notifications
+                if (n.isExpired) return false;
+                // If targetUserIds is null, show to all users
+                if (n.targetUserIds == null) return true;
+                // If userId provided, check if user is in target list
+                if (userId != null) {
+                  return n.targetUserIds!.contains(userId);
+                }
+                return true;
+              })
+              .toList()
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
       return notifications;
     });
   }
@@ -330,8 +414,15 @@ class DatabaseService {
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
-  Future<void> markNotificationAsRead(String notificationId, String userId) async {
-    await _notificationsRef.child(notificationId).child('readBy').child(userId).set(true);
+  Future<void> markNotificationAsRead(
+    String notificationId,
+    String userId,
+  ) async {
+    await _notificationsRef
+        .child(notificationId)
+        .child('readBy')
+        .child(userId)
+        .set(true);
   }
 
   Future<void> markAllNotificationsAsRead(String userId) async {
@@ -352,4 +443,3 @@ class DatabaseService {
     });
   }
 }
-

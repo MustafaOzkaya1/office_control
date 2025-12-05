@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:office_control/providers/auth_provider.dart';
 import 'package:office_control/screens/admin/admin_panel_screen.dart';
 import 'package:office_control/screens/admin/create_notification_screen.dart';
 import 'package:office_control/screens/admin/office_location_screen.dart';
+import 'package:office_control/screens/admin/seed_data_screen.dart';
+import 'package:office_control/services/database_service.dart';
 import 'package:office_control/utils/app_theme.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -72,6 +75,7 @@ class SettingsScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  _PatronKomutItem(),
                   _SettingsItem(
                     icon: Icons.wifi,
                     title: 'ESP32 Settings',
@@ -80,6 +84,20 @@ class SettingsScreen extends StatelessWidget {
                       // TODO: ESP32 settings
                     },
                   ),
+                  if (kDebugMode)
+                    _SettingsItem(
+                      icon: Icons.dataset,
+                      title: 'Toplu Veri Olustur',
+                      subtitle: '100 calisan ve 10 ay veri',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SeedDataScreen(),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -243,7 +261,7 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _SettingsCard extends StatelessWidget {
-  final List<_SettingsItem> items;
+  final List<dynamic> items;
 
   const _SettingsCard({required this.items});
 
@@ -259,36 +277,53 @@ class _SettingsCard extends StatelessWidget {
         children: items.asMap().entries.map((entry) {
           final index = entry.key;
           final item = entry.value;
-          return Column(
-            children: [
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+          
+          // Eğer Widget ise direkt kullan
+          if (item is Widget) {
+            return Column(
+              children: [
+                item,
+                if (index < items.length - 1)
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+              ],
+            );
+          }
+          
+          // Eğer _SettingsItem ise ListTile'a çevir
+          if (item is _SettingsItem) {
+            return Column(
+              children: [
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      item.icon,
+                      color: AppColors.primaryLight,
+                      size: 20,
+                    ),
                   ),
-                  child: Icon(
-                    item.icon,
-                    color: AppColors.primaryLight,
-                    size: 20,
-                  ),
+                  title: Text(item.title),
+                  subtitle: item.subtitle != null ? Text(item.subtitle!) : null,
+                  trailing: item.trailing ??
+                      (item.onTap != null
+                          ? const Icon(
+                              Icons.chevron_right,
+                              color: AppColors.textMuted,
+                            )
+                          : null),
+                  onTap: item.onTap,
                 ),
-                title: Text(item.title),
-                subtitle: item.subtitle != null ? Text(item.subtitle!) : null,
-                trailing: item.trailing ??
-                    (item.onTap != null
-                        ? const Icon(
-                            Icons.chevron_right,
-                            color: AppColors.textMuted,
-                          )
-                        : null),
-                onTap: item.onTap,
-              ),
-              if (index < items.length - 1)
-                const Divider(height: 1, indent: 16, endIndent: 16),
-            ],
-          );
+                if (index < items.length - 1)
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+              ],
+            );
+          }
+          
+          return const SizedBox.shrink();
         }).toList(),
       ),
     );
@@ -309,5 +344,97 @@ class _SettingsItem {
     this.onTap,
     this.trailing,
   });
+}
+
+class _PatronKomutItem extends StatefulWidget {
+  const _PatronKomutItem();
+
+  @override
+  State<_PatronKomutItem> createState() => _PatronKomutItemState();
+}
+
+class _PatronKomutItemState extends State<_PatronKomutItem> {
+  final DatabaseService _dbService = DatabaseService();
+  bool _isUpdating = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<bool>(
+      stream: _dbService.patronKomutStream(),
+      builder: (context, snapshot) {
+        final isEnabled = snapshot.data ?? false;
+        final isLoading = snapshot.connectionState == ConnectionState.waiting;
+
+        return ListTile(
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.security,
+              color: AppColors.primaryLight,
+              size: 20,
+            ),
+          ),
+          title: const Text('Patron Komutu'),
+          subtitle: Text(
+            isEnabled
+                ? 'Kapı erişimi aktif - Kullanıcılar kapıyı açabilir'
+                : 'Kapı erişimi pasif - Kullanıcılar kapıyı açamaz',
+          ),
+          trailing: _isUpdating || isLoading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Switch(
+                  value: isEnabled,
+                  onChanged: _isUpdating
+                      ? null
+                      : (value) => _togglePatronKomut(value),
+                  activeColor: AppColors.accent,
+                ),
+        );
+      },
+    );
+  }
+
+  Future<void> _togglePatronKomut(bool newValue) async {
+    setState(() => _isUpdating = true);
+
+    try {
+      await _dbService.setPatronKomut(newValue);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newValue
+                  ? 'Kapı erişimi aktif edildi'
+                  : 'Kapı erişimi pasif edildi',
+            ),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+
+    if (mounted) {
+      setState(() => _isUpdating = false);
+    }
+  }
 }
 

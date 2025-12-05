@@ -78,16 +78,14 @@ class DoorAccessService {
       );
     }
 
-    // 3. Send command to ESP32
-    final espResponse = await _esp32Service.openDoor();
-    if (!espResponse.success) {
-      return DoorAccessResult(
-        status: DoorAccessStatus.espError,
-        message: espResponse.message,
-      );
+    // 2.5. Konum kontrolü başarılı - /komut'u true yap (10 saniye sonra otomatik false olacak)
+    try {
+      await _dbService.setKomutWithAutoReset();
+    } catch (e) {
+      // Komut ayarlama hatası kritik değil, devam et
     }
 
-    // 4. Record attendance
+    // 3. Hemen attendance kaydı yap (komut true yapıldığında kayıt oluştur)
     final record = AttendanceRecord(
       id: _uuid.v4(),
       userId: userId,
@@ -100,10 +98,16 @@ class DoorAccessService {
     try {
       await _dbService.recordAttendance(record);
     } catch (e) {
-      // Door opened but attendance recording failed - still success but log error
+      // Attendance kayıt hatası - devam et ama kayıt olmadan
+    }
+
+    // 4. Send command to ESP32
+    final espResponse = await _esp32Service.openDoor();
+    if (!espResponse.success) {
+      // ESP32 hatası olsa bile kayıt yapıldı, başarılı dön
       return DoorAccessResult(
         status: DoorAccessStatus.success,
-        message: 'Kapı açıldı. (Kayıt hatası: $e)',
+        message: 'Giriş kaydedildi. (ESP32 bağlantı hatası: ${espResponse.message})',
         record: record,
       );
     }

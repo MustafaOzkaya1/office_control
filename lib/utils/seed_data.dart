@@ -74,11 +74,15 @@ class SeedData {
         'name': 'Main Office',
         'latitude': 41.0082, // İstanbul koordinatları (örnek)
         'longitude': 28.9784,
-        'radiusMeters': 10.0,
+        'radiusMeters': 100.0,
         'espIpAddress': '192.168.1.100',
         'espSsid': 'Office_ESP32',
       });
       print('✓ Office location created');
+
+      // Patron komut varsayılan değeri (true = kapı erişimi aktif) - root'ta /patronkomut
+      await db.ref('patronkomut').set(true);
+      print('✓ Patron komut initialized (default: true)');
 
       print('\n========================================');
       print('TEST HESAPLARI OLUŞTURULDU!');
@@ -101,6 +105,33 @@ class SeedData {
       }
     } catch (e) {
       print('❌ Beklenmeyen hata: $e');
+    }
+  }
+
+  /// Mevcut ofis konumunun yarıçapını 100 metreye günceller
+  static Future<void> updateOfficeRadiusTo100() async {
+    final db = FirebaseDatabase.instance;
+
+    try {
+      print('Updating office location radius to 100 meters...');
+
+      // Mevcut ofis konumunu al
+      final snapshot = await db.ref('office/location').get();
+      if (!snapshot.exists || snapshot.value == null) {
+        print('⚠️ Ofis konumu bulunamadı. Önce ofis konumu oluşturun.');
+        return;
+      }
+
+      final currentData = Map<String, dynamic>.from(snapshot.value as Map);
+
+      // Yarıçapı 100'e güncelle
+      await db.ref('office/location/radiusMeters').set(100.0);
+
+      print('✓ Ofis konumu yarıçapı 100 metreye güncellendi!');
+      print('   Önceki yarıçap: ${currentData['radiusMeters']} metre');
+      print('   Yeni yarıçap: 100 metre');
+    } catch (e) {
+      print('❌ Güncelleme hatası: $e');
     }
   }
 }

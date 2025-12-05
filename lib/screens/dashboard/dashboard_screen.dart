@@ -571,10 +571,18 @@ class _DoorAccessCardState extends State<_DoorAccessCard> {
   /// Requests permission when user wants to use door access
   Future<bool> _requestPermission() async {
     try {
-      final hasPermission = await _locationService.checkAndRequestPermission();
+      final (hasPermission, isDeniedForever) = await _locationService
+          .checkAndRequestPermissionWithStatus();
+
       if (mounted) {
         setState(() => _hasLocationPermission = hasPermission);
       }
+
+      // Eğer izin kalıcı olarak reddedilmişse, ayarlara yönlendir
+      if (!hasPermission && isDeniedForever && mounted) {
+        _showDeniedForeverDialog();
+      }
+
       return hasPermission;
     } catch (e) {
       return false;
@@ -603,12 +611,40 @@ class _DoorAccessCardState extends State<_DoorAccessCard> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-              final hasPermission = await _requestPermission();
-              if (!hasPermission && mounted) {
-                Geolocator.openAppSettings();
-              }
+              await _requestPermission();
             },
             child: const Text('İzin Ver'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeniedForeverDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.settings, color: AppColors.error),
+            const SizedBox(width: 8),
+            const Text('Ayarlara Git'),
+          ],
+        ),
+        content: const Text(
+          'Konum izni kalıcı olarak reddedilmiş. Lütfen ayarlardan konum iznini manuel olarak açın.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Geolocator.openAppSettings();
+            },
+            child: const Text('Ayarlara Git'),
           ),
         ],
       ),

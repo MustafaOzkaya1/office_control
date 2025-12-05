@@ -52,7 +52,7 @@ class _OfficeLocationScreenState extends State<OfficeLocationScreen> {
         _espSsidController.text = location.espSsid ?? '';
       } else {
         // Default values
-        _radiusController.text = '10';
+        _radiusController.text = '100';
       }
     } catch (e) {
       if (mounted) {
@@ -72,11 +72,21 @@ class _OfficeLocationScreenState extends State<OfficeLocationScreen> {
     setState(() => _isGettingLocation = true);
 
     try {
-      final hasPermission = await _locationService.checkAndRequestPermission();
+      final (hasPermission, isDeniedForever) = 
+          await _locationService.checkAndRequestPermissionWithStatus();
       
       if (!hasPermission) {
         if (mounted) {
-          _showLocationPermissionDialog();
+          if (isDeniedForever) {
+            _showLocationPermissionDialog();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Konum izni gerekli. Lütfen izin verin.'),
+                backgroundColor: AppColors.warning,
+              ),
+            );
+          }
         }
         setState(() => _isGettingLocation = false);
         return;
@@ -91,12 +101,8 @@ class _OfficeLocationScreenState extends State<OfficeLocationScreen> {
         });
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Mevcut konum alındı!'),
-              backgroundColor: AppColors.success,
-            ),
-          );
+          // Konum alındıktan sonra otomatik kaydetme seçeneği sun
+          _showSaveLocationDialog(position.latitude, position.longitude);
         }
       } else {
         if (mounted) {
@@ -120,6 +126,98 @@ class _OfficeLocationScreenState extends State<OfficeLocationScreen> {
     }
 
     setState(() => _isGettingLocation = false);
+  }
+
+  void _showSaveLocationDialog(double latitude, double longitude) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.location_on, color: AppColors.success),
+            SizedBox(width: 8),
+            Text('Konum Alındı'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Mevcut konumunuz:'),
+            const SizedBox(height: 8),
+            Text(
+              'Enlem: ${latitude.toStringAsFixed(6)}\nBoylam: ${longitude.toStringAsFixed(6)}',
+              style: const TextStyle(fontFamily: 'monospace'),
+            ),
+            const SizedBox(height: 16),
+            const Text('Bu konumu ofis konumu olarak kaydetmek ister misiniz?'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              // Sadece koordinatları kaydet, diğer alanlar mevcut değerlerini korur
+              await _saveLocationWithCoordinates(latitude, longitude);
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveLocationWithCoordinates(double latitude, double longitude) async {
+    setState(() => _isSaving = true);
+
+    try {
+      // Mevcut değerleri koru, sadece koordinatları güncelle
+      final location = OfficeLocation(
+        id: _currentLocation?.id ?? 'main-office',
+        name: _nameController.text.trim().isEmpty 
+            ? (_currentLocation?.name ?? 'Ana Ofis')
+            : _nameController.text.trim(),
+        latitude: latitude,
+        longitude: longitude,
+        radiusMeters: _radiusController.text.trim().isEmpty
+            ? (_currentLocation?.radiusMeters ?? 100.0)
+            : double.parse(_radiusController.text.trim()),
+        espIpAddress: _espIpController.text.trim().isEmpty
+            ? _currentLocation?.espIpAddress
+            : _espIpController.text.trim(),
+        espSsid: _espSsidController.text.trim().isEmpty
+            ? _currentLocation?.espSsid
+            : _espSsidController.text.trim(),
+      );
+
+      await _dbService.updateOfficeLocation(location);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ofis konumu başarıyla kaydedildi!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        // Mevcut konumu yeniden yükle
+        await _loadCurrentLocation();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kaydetme hatası: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+
+    setState(() => _isSaving = false);
   }
 
   void _showLocationPermissionDialog() {
@@ -178,18 +276,27 @@ class _OfficeLocationScreenState extends State<OfficeLocationScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Ofis konumu kaydedildi!'),
+            content: Text('Ofis konumu başarıyla kaydedildi!'),
             backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
           ),
         );
-        Navigator.pop(context);
+        // Mevcut konumu yeniden yükle
+        await _loadCurrentLocation();
+        // Kısa bir gecikme sonrası geri dön
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.pop(context);
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Kaydetme hatası: $e'),
+            content: Text('Kaydetme hatası: $e\nLütfen Firebase Rules kontrol edin.'),
             backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -349,7 +456,7 @@ class _OfficeLocationScreenState extends State<OfficeLocationScreen> {
                     CustomTextField(
                       controller: _radiusController,
                       label: 'Erişim Yarıçapı (metre)',
-                      hint: '10',
+                      hint: '100',
                       keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value == null || value.isEmpty) {

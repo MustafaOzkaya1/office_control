@@ -24,7 +24,7 @@ ESP32 WiFi modülü ile entegre akıllı ofis giriş kontrol sistemi. Firebase A
 
 ### 🚪 Kapı Erişim Kontrolü
 - ESP32 WiFi modülü ile kapı açma
-- Konum tabanlı erişim kontrolü (10 metre yarıçap)
+- Konum tabanlı erişim kontrolü (100 metre yarıçap)
 - Giriş/Çıkış kaydı
 - Çalışma saati takibi
 
@@ -130,7 +130,7 @@ flutter pub get
       "name": "Main Office",
       "latitude": 41.0082,
       "longitude": 28.9784,
-      "radiusMeters": 10,
+      "radiusMeters": 100,
       "espIpAddress": "192.168.1.100",
       "espSsid": "Office_ESP32"
     }

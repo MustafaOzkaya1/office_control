@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
   bool _isAdmin = false;
   bool _isSeeding = false;
+  bool _isUpdatingRadius = false;
 
   @override
   void initState() {
@@ -104,6 +105,33 @@ class _LoginScreenState extends State<LoginScreen>
     }
     
     setState(() => _isSeeding = false);
+  }
+
+  Future<void> _updateOfficeRadius() async {
+    setState(() => _isUpdatingRadius = true);
+
+    try {
+      await SeedData.updateOfficeRadiusTo100();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ofis yarıçapı 100 metreye güncellendi!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+
+    setState(() => _isUpdatingRadius = false);
   }
 
   @override
@@ -257,6 +285,18 @@ class _LoginScreenState extends State<LoginScreen>
                           )
                         : const Icon(Icons.bug_report, size: 16),
                     label: Text(_isSeeding ? 'Oluşturuluyor...' : 'Test Hesapları Oluştur'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: _isUpdatingRadius ? null : _updateOfficeRadius,
+                    icon: _isUpdatingRadius
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.location_on, size: 16),
+                    label: Text(_isUpdatingRadius ? 'Güncelleniyor...' : 'Yarıçapı 100m Yap'),
                   ),
                 ],
               ],

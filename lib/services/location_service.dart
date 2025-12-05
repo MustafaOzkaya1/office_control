@@ -20,29 +20,50 @@ class LocationService {
   }
 
   /// Checks and requests permission if needed
-  Future<bool> checkAndRequestPermission() async {
+  /// Returns (hasPermission, isDeniedForever)
+  Future<(bool, bool)> checkAndRequestPermissionWithStatus() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        return false;
+        return (false, false);
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
+
+      // İzin zaten verilmiş
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
+        return (true, false);
+      }
+
+      // İzin reddedilmiş, tekrar iste
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          return false;
+        if (permission == LocationPermission.always ||
+            permission == LocationPermission.whileInUse) {
+          return (true, false);
         }
+        if (permission == LocationPermission.deniedForever) {
+          return (false, true);
+        }
+        return (false, false);
       }
 
+      // İzin kalıcı olarak reddedilmiş
       if (permission == LocationPermission.deniedForever) {
-        return false;
+        return (false, true);
       }
 
-      return true;
+      return (false, false);
     } catch (e) {
-      return false;
+      return (false, false);
     }
+  }
+
+  /// Checks and requests permission if needed (backward compatibility)
+  Future<bool> checkAndRequestPermission() async {
+    final (hasPermission, _) = await checkAndRequestPermissionWithStatus();
+    return hasPermission;
   }
 
   Future<Position?> getCurrentPosition() async {
@@ -100,11 +121,14 @@ class LocationService {
   Future<LocationCheckResult> checkLocationForDoorAccess(
     OfficeLocation office,
   ) async {
-    final hasPermission = await checkAndRequestPermission();
+    final (hasPermission, isDeniedForever) =
+        await checkAndRequestPermissionWithStatus();
     if (!hasPermission) {
       return LocationCheckResult(
         success: false,
-        message: 'Konum izni gerekli. Lütfen ayarlardan izin verin.',
+        message: isDeniedForever
+            ? 'Konum izni kalıcı olarak reddedilmiş. Lütfen ayarlardan izin verin.'
+            : 'Konum izni gerekli. Lütfen izin verin.',
         distanceMeters: null,
       );
     }
