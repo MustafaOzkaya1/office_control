@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:office_control/models/attendance_model.dart';
 import 'package:office_control/models/task_model.dart';
 import 'package:office_control/models/notification_model.dart';
+import 'package:office_control/models/ai_performance_model.dart';
 import 'package:office_control/providers/auth_provider.dart';
 import 'package:office_control/providers/task_provider.dart';
 import 'package:office_control/providers/attendance_provider.dart';
@@ -12,8 +13,10 @@ import 'package:office_control/providers/notification_provider.dart';
 import 'package:office_control/screens/tasks/create_task_screen.dart';
 import 'package:office_control/screens/profile/profile_screen.dart';
 import 'package:office_control/screens/settings/settings_screen.dart';
+import 'package:office_control/screens/ai/ai_prediction_screen.dart';
 import 'package:office_control/services/door_access_service.dart';
 import 'package:office_control/services/location_service.dart';
+import 'package:office_control/services/database_service.dart';
 import 'package:office_control/utils/app_theme.dart';
 import 'package:office_control/widgets/status_badge.dart';
 
@@ -83,14 +86,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CreateTaskScreen()),
-                );
-              },
-              child: const Icon(Icons.add),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  heroTag: 'ai_prediction',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AIPredictionScreen(),
+                      ),
+                    );
+                  },
+                  backgroundColor: AppColors.primary,
+                  child: const Icon(Icons.psychology),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton(
+                  heroTag: 'create_task',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CreateTaskScreen(),
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.add),
+                ),
+              ],
             )
           : null,
     );
@@ -144,6 +169,10 @@ class _DashboardHome extends StatelessWidget {
               'Welcome, $firstName',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
+            const SizedBox(height: 24),
+
+            // AI Performance Card
+            if (user != null) _AIPerformanceCard(uid: user.uid),
             const SizedBox(height: 24),
 
             // Door Access Card
@@ -1250,5 +1279,246 @@ class _DifficultyIndicator extends StatelessWidget {
       case TaskDifficulty.veryHard:
         return Icons.whatshot;
     }
+  }
+}
+
+// ==================== AI PERFORMANCE WIDGETS ====================
+
+class _AIPerformanceCard extends StatelessWidget {
+  final String uid;
+
+  const _AIPerformanceCard({required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    final databaseService = DatabaseService();
+
+    return StreamBuilder<AIPerformance?>(
+      stream: databaseService.aiPerformanceStream(uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data == null) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Center(
+              child: Text(
+                'AI Analizi Bekleniyor...',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+              ),
+            ),
+          );
+        }
+
+        final performance = snapshot.data!;
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome,
+                      color: AppColors.accent,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'AI Performans Analizi',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Günlük Skor
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Günlük Skor',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                  ),
+                  Text(
+                    '${performance.dailyScore.toStringAsFixed(1)}',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // XP ve Seviye
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatItem(
+                      label: 'XP',
+                      value: '${performance.generalScoreXp}',
+                      icon: Icons.stars,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StatItem(
+                      label: 'Seviye',
+                      value: performance.careerLevel,
+                      icon: Icons.trending_up,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Hız ve Ruh Hali
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatItem(
+                      label: 'Hız Durumu',
+                      value: performance.speedLabel,
+                      icon: Icons.speed,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StatItem(
+                      label: 'Ruh Hali',
+                      value: performance.dailyMood,
+                      icon: Icons.mood,
+                    ),
+                  ),
+                ],
+              ),
+              // Öneriler
+              if (performance.actionItems.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 12),
+                Text(
+                  'Öneriler',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                ...performance.actionItems.map((item) => Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.border,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.lightbulb_outline,
+                            size: 18,
+                            color: AppColors.accent,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _StatItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: AppColors.textMuted),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
   }
 }

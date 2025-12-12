@@ -5,6 +5,9 @@ import 'package:office_control/models/access_request_model.dart';
 import 'package:office_control/models/attendance_model.dart';
 import 'package:office_control/models/office_location_model.dart';
 import 'package:office_control/models/notification_model.dart';
+import 'package:office_control/models/ai_performance_model.dart';
+import 'package:office_control/models/ai_interaction_model.dart';
+import 'package:office_control/models/company_insights_model.dart';
 import 'package:intl/intl.dart';
 
 class DatabaseService {
@@ -441,5 +444,105 @@ class DatabaseService {
     return notificationsStream(userId: userId).map((notifications) {
       return notifications.where((n) => !n.isReadByUser(userId)).length;
     });
+  }
+
+  // ==================== AI PERFORMANCE OPERATIONS ====================
+
+  /// AI Performance verisini dinler (users/{uid}/ai_performance)
+  Stream<AIPerformance?> aiPerformanceStream(String uid) {
+    return _usersRef.child(uid).child('ai_performance').onValue.map((event) {
+      if (!event.snapshot.exists || event.snapshot.value == null) {
+        return null;
+      }
+      final data = Map<String, dynamic>.from(
+        event.snapshot.value as Map,
+      );
+      return AIPerformance.fromMap(data);
+    });
+  }
+
+  Future<AIPerformance?> getAIPerformance(String uid) async {
+    final snapshot = await _usersRef.child(uid).child('ai_performance').get();
+    if (!snapshot.exists || snapshot.value == null) return null;
+    final data = Map<String, dynamic>.from(snapshot.value as Map);
+    return AIPerformance.fromMap(data);
+  }
+
+  // ==================== AI INTERACTION OPERATIONS ====================
+
+  /// AI tahmin isteği gönderir (users/{uid}/ai_interaction/predict_request)
+  Future<void> sendAIPredictRequest({
+    required String uid,
+    required String description,
+    required String difficulty,
+  }) async {
+    await _usersRef.child(uid).child('ai_interaction').child('predict_request').set({
+      'description': description,
+      'difficulty': difficulty,
+      'status': 'pending',
+      'timestamp': ServerValue.timestamp,
+    });
+  }
+
+  /// AI tahmin cevabını dinler (users/{uid}/ai_interaction/predict_response)
+  Stream<AIPredictResponse?> aiPredictResponseStream(String uid) {
+    return _usersRef
+        .child(uid)
+        .child('ai_interaction')
+        .child('predict_response')
+        .onValue
+        .map((event) {
+      if (!event.snapshot.exists || event.snapshot.value == null) {
+        return null;
+      }
+      final data = event.snapshot.value as Map<dynamic, dynamic>?;
+      if (data == null) return null;
+      return AIPredictResponse.fromMap(
+        Map<String, dynamic>.from(data),
+      );
+    });
+  }
+
+  Future<AIPredictResponse?> getAIPredictResponse(String uid) async {
+    final snapshot = await _usersRef
+        .child(uid)
+        .child('ai_interaction')
+        .child('predict_response')
+        .get();
+    if (!snapshot.exists || snapshot.value == null) return null;
+    final data = Map<String, dynamic>.from(snapshot.value as Map);
+    return AIPredictResponse.fromMap(data);
+  }
+
+  // ==================== COMPANY INSIGHTS OPERATIONS ====================
+
+  /// Şirket insights verisini dinler (ai_company_insights)
+  Stream<CompanyInsights> companyInsightsStream() {
+    return _db.ref('ai_company_insights').onValue.map((event) {
+      if (!event.snapshot.exists || event.snapshot.value == null) {
+        return CompanyInsights(
+          riskAlertList: [],
+          starPerformers: [],
+          strategyMap: {},
+        );
+      }
+      final data = Map<String, dynamic>.from(
+        event.snapshot.value as Map,
+      );
+      return CompanyInsights.fromMap(data);
+    });
+  }
+
+  Future<CompanyInsights> getCompanyInsights() async {
+    final snapshot = await _db.ref('ai_company_insights').get();
+    if (!snapshot.exists || snapshot.value == null) {
+      return CompanyInsights(
+        riskAlertList: [],
+        starPerformers: [],
+        strategyMap: {},
+      );
+    }
+    final data = Map<String, dynamic>.from(snapshot.value as Map);
+    return CompanyInsights.fromMap(data);
   }
 }
