@@ -4,8 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:office_control/models/access_request_model.dart';
 import 'package:office_control/models/user_model.dart';
+import 'package:office_control/models/ai_performance_model.dart';
 import 'package:office_control/services/database_service.dart';
-import 'package:office_control/services/auth_service.dart';
 import 'package:office_control/providers/auth_provider.dart';
 import 'package:office_control/utils/app_theme.dart';
 
@@ -72,9 +72,7 @@ class _PendingRequestsTab extends StatelessWidget {
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Text('Error: ${snapshot.error}'),
-          );
+          return Center(child: Text('Error: ${snapshot.error}'));
         }
 
         final requests = snapshot.data ?? [];
@@ -92,9 +90,9 @@ class _PendingRequestsTab extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text(
                   'No pending requests',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.textMuted,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: AppColors.textMuted),
                 ),
               ],
             ),
@@ -106,10 +104,7 @@ class _PendingRequestsTab extends StatelessWidget {
           itemCount: requests.length,
           itemBuilder: (context, index) {
             final request = requests[index];
-            return _RequestCard(
-              request: request,
-              dbService: dbService,
-            );
+            return _RequestCard(request: request, dbService: dbService);
           },
         );
       },
@@ -121,10 +116,7 @@ class _RequestCard extends StatelessWidget {
   final AccessRequestModel request;
   final DatabaseService dbService;
 
-  const _RequestCard({
-    required this.request,
-    required this.dbService,
-  });
+  const _RequestCard({required this.request, required this.dbService});
 
   @override
   Widget build(BuildContext context) {
@@ -165,19 +157,16 @@ class _RequestCard extends StatelessWidget {
                     Text(
                       request.position,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textMuted,
-                          ),
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.warning.withOpacity(0.2),
+                  color: AppColors.warning.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -214,8 +203,8 @@ class _RequestCard extends StatelessWidget {
                   Text(
                     'Reason:',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.textMuted,
-                        ),
+                      color: AppColors.textMuted,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -282,9 +271,9 @@ class _RequestCard extends StatelessWidget {
       // Create user account with the password user set during request
       final credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
-        email: request.email,
-        password: request.password, // Use user's chosen password
-      );
+            email: request.email,
+            password: request.password, // Use user's chosen password
+          );
 
       // Create user in database
       final newUser = Employee(
@@ -310,7 +299,9 @@ class _RequestCard extends StatelessWidget {
         Navigator.pop(context); // Close loading
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${request.fullName} onaylandı! Artık giriş yapabilir.'),
+            content: Text(
+              '${request.fullName} onaylandı! Artık giriş yapabilir.',
+            ),
             backgroundColor: AppColors.success,
           ),
         );
@@ -319,10 +310,7 @@ class _RequestCard extends StatelessWidget {
       if (context.mounted) {
         Navigator.pop(context); // Close loading
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -344,9 +332,7 @@ class _RequestCard extends StatelessWidget {
             TextField(
               controller: reasonController,
               maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Reason...',
-              ),
+              decoration: const InputDecoration(hintText: 'Reason...'),
             ),
           ],
         ),
@@ -410,9 +396,9 @@ class _InfoRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
           ),
         ),
       ],
@@ -435,9 +421,7 @@ class _AllUsersTab extends StatelessWidget {
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Text('Error: ${snapshot.error}'),
-          );
+          return Center(child: Text('Error: ${snapshot.error}'));
         }
 
         final users = snapshot.data ?? [];
@@ -455,9 +439,9 @@ class _AllUsersTab extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text(
                   'No users yet',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.textMuted,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: AppColors.textMuted),
                 ),
               ],
             ),
@@ -469,7 +453,7 @@ class _AllUsersTab extends StatelessWidget {
           itemCount: users.length,
           itemBuilder: (context, index) {
             final user = users[index];
-            return _UserCard(user: user);
+            return _UserCard(user: user, dbService: dbService);
           },
         );
       },
@@ -479,12 +463,16 @@ class _AllUsersTab extends StatelessWidget {
 
 class _UserCard extends StatelessWidget {
   final UserModel user;
+  final DatabaseService dbService;
 
-  const _UserCard({required this.user});
+  const _UserCard({required this.user, required this.dbService});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // Sadece employee'ler için tıklanabilir yap
+    final isClickable = user.role == UserRole.employee;
+
+    Widget cardContent = Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -496,7 +484,7 @@ class _UserCard extends StatelessWidget {
         children: [
           CircleAvatar(
             backgroundColor: user.role == UserRole.admin
-                ? AppColors.accent.withOpacity(0.2)
+                ? AppColors.accent.withValues(alpha: 0.2)
                 : AppColors.primary,
             child: Text(
               user.firstName.isNotEmpty ? user.firstName[0].toUpperCase() : '?',
@@ -527,8 +515,8 @@ class _UserCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: user.role == UserRole.admin
-                            ? AppColors.accent.withOpacity(0.2)
-                            : AppColors.primary.withOpacity(0.2),
+                            ? AppColors.accent.withValues(alpha: 0.2)
+                            : AppColors.primary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -547,27 +535,357 @@ class _UserCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   user.email,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textMuted,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
                 ),
                 Text(
                   user.position,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
           ),
-          Icon(
-            user.isApproved ? Icons.verified : Icons.pending,
-            color: user.isApproved ? AppColors.success : AppColors.warning,
-            size: 20,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isClickable)
+                Icon(
+                  Icons.analytics_outlined,
+                  color: AppColors.accent,
+                  size: 20,
+                ),
+              const SizedBox(width: 8),
+              Icon(
+                user.isApproved ? Icons.verified : Icons.pending,
+                color: user.isApproved ? AppColors.success : AppColors.warning,
+                size: 20,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (isClickable) {
+      return InkWell(
+        onTap: () => _showUserPerformance(context, user.uid),
+        borderRadius: BorderRadius.circular(12),
+        child: cardContent,
+      );
+    }
+
+    return cardContent;
+  }
+
+  void _showUserPerformance(BuildContext context, String uid) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) =>
+          _UserPerformanceSheet(uid: uid, dbService: dbService),
+    );
+  }
+}
+
+class _UserPerformanceSheet extends StatelessWidget {
+  final String uid;
+  final DatabaseService dbService;
+
+  const _UserPerformanceSheet({required this.uid, required this.dbService});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return StreamBuilder<AIPerformance?>(
+          stream: dbService.aiPerformanceStream(uid),
+          builder: (context, snapshot) {
+            return Column(
+              children: [
+                // Handle
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.textMuted,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Kullanıcı Performans Analizi',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                // Content
+                Expanded(
+                  child: snapshot.connectionState == ConnectionState.waiting
+                      ? const Center(child: CircularProgressIndicator())
+                      : !snapshot.hasData || snapshot.data == null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.analytics_outlined,
+                                size: 64,
+                                color: AppColors.textMuted,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Henüz performans verisi yok',
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(color: AppColors.textMuted),
+                              ),
+                            ],
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          controller: scrollController,
+                          padding: const EdgeInsets.all(20),
+                          child: _PerformanceContent(
+                            performance: snapshot.data!,
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _PerformanceContent extends StatelessWidget {
+  final AIPerformance performance;
+
+  const _PerformanceContent({required this.performance});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Günlük Skor
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              Text(
+                'Günlük Skor',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                performance.dailyScore.toStringAsFixed(1),
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: AppColors.accent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        // İstatistikler
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                label: 'XP',
+                value: performance.generalScoreXp.toString(),
+                icon: Icons.stars,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                label: 'Seviye',
+                value: performance.careerLevel,
+                icon: Icons.trending_up,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                label: 'Hız',
+                value: performance.speedLabel,
+                icon: Icons.speed,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                label: 'Ruh Hali',
+                value: performance.dailyMood,
+                icon: Icons.mood,
+              ),
+            ),
+          ],
+        ),
+        // Cluster Role (eğer varsa)
+        if (performance.clusterRole != null &&
+            performance.clusterRole!.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.accent.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.group_work, size: 24, color: AppColors.accent),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rol',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        performance.clusterRole!,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        // Öneriler
+        if (performance.actionItems.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text('Öneriler', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          ...performance.actionItems.map(
+            (item) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.lightbulb_outline,
+                    size: 18,
+                    color: AppColors.accent,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: AppColors.textMuted),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 }
-

@@ -1,10 +1,8 @@
 import 'dart:math';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
-import 'package:office_control/models/user_model.dart';
 import 'package:office_control/models/task_model.dart';
-import 'package:office_control/models/attendance_model.dart';
 import 'package:uuid/uuid.dart';
 
 /// 100 çalışan ve 10 aylık veri oluşturur
@@ -361,14 +359,14 @@ class SeedBulkData {
 
   /// 100 çalışan ve 10 aylık veri oluşturur
   static Future<void> seedAll() async {
-    print('🚀 Toplu veri oluşturma başlıyor...');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('🚀 Toplu veri oluşturma başlıyor...');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     final employees = <Map<String, dynamic>>[];
     final usedNames = <String>{};
 
     // 100 çalışan oluştur
-    print('👥 100 çalışan oluşturuluyor...');
+    debugPrint('👥 100 çalışan oluşturuluyor...');
     for (int i = 0; i < 100; i++) {
       String firstName, lastName, fullName;
       do {
@@ -380,7 +378,7 @@ class SeedBulkData {
 
       final uid = _uuid.v4();
       final email =
-          '${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@sirket.com'
+          '${firstName.toLowerCase()}.${lastName.toLowerCase()}$i@sirket.com'
               .replaceAll('ı', 'i')
               .replaceAll('ğ', 'g')
               .replaceAll('ü', 'u')
@@ -409,15 +407,15 @@ class SeedBulkData {
       });
 
       if ((i + 1) % 20 == 0) {
-        print('   ✓ ${i + 1}/100 çalışan oluşturuldu');
+        debugPrint('   ✓ ${i + 1}/100 çalışan oluşturuldu');
       }
     }
 
-    print('✅ 100 çalışan bilgisi hazır');
-    print('');
+    debugPrint('✅ 100 çalışan bilgisi hazır');
+    debugPrint('');
 
     // Firebase'e çalışanları ekle
-    print('📤 Çalışanlar Firebase\'e yükleniyor...');
+    debugPrint('📤 Çalışanlar Firebase\'e yükleniyor...');
     for (int i = 0; i < employees.length; i++) {
       final emp = employees[i];
       await _db.ref('users/${emp['uid']}').set({
@@ -433,14 +431,14 @@ class SeedBulkData {
       });
 
       if ((i + 1) % 20 == 0) {
-        print('   ✓ ${i + 1}/100 çalışan yüklendi');
+        debugPrint('   ✓ ${i + 1}/100 çalışan yüklendi');
       }
     }
-    print('✅ Çalışanlar yüklendi');
-    print('');
+    debugPrint('✅ Çalışanlar yüklendi');
+    debugPrint('');
 
     // Her çalışan için attendance ve task verisi oluştur
-    print('📊 Devam ve görev verileri oluşturuluyor...');
+    debugPrint('📊 Devam ve görev verileri oluşturuluyor...');
     final now = DateTime.now();
 
     for (int empIndex = 0; empIndex < employees.length; empIndex++) {
@@ -540,24 +538,24 @@ class SeedBulkData {
       }
 
       if ((empIndex + 1) % 10 == 0) {
-        print('   ✓ ${empIndex + 1}/100 çalışan verisi tamamlandı');
+        debugPrint('   ✓ ${empIndex + 1}/100 çalışan verisi tamamlandı');
       }
     }
 
-    print('');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('🎉 TOPLU VERİ OLUŞTURMA TAMAMLANDI!');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    print('📊 Oluşturulan veriler:');
-    print('   • 100 çalışan');
-    print('   • ~10 ay devam kaydı (hafta içi günler)');
-    print('   • 500-1500 arası görev');
-    print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('🎉 TOPLU VERİ OLUŞTURMA TAMAMLANDI!');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    debugPrint('📊 Oluşturulan veriler:');
+    debugPrint('   • 100 çalışan');
+    debugPrint('   • ~10 ay devam kaydı (hafta içi günler)');
+    debugPrint('   • 500-1500 arası görev');
+    debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   }
 
   /// Sadece belirli sayıda çalışan için veri oluşturur (test için)
   static Future<void> seedSample({int count = 10}) async {
-    print('🚀 Örnek veri oluşturma başlıyor ($count çalışan)...');
+    debugPrint('🚀 Örnek veri oluşturma başlıyor ($count çalışan)...');
 
     final employees = <Map<String, dynamic>>[];
     final usedNames = <String>{};
@@ -573,7 +571,7 @@ class SeedBulkData {
 
       final uid = _uuid.v4();
       final email =
-          '${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@sirket.com'
+          '${firstName.toLowerCase()}.${lastName.toLowerCase()}$i@sirket.com'
               .replaceAll('ı', 'i')
               .replaceAll('ğ', 'g')
               .replaceAll('ü', 'u')
@@ -665,9 +663,9 @@ class SeedBulkData {
         });
       }
 
-      print('✓ ${i + 1}/$count: $fullName');
+      debugPrint('✓ ${i + 1}/$count: $fullName');
     }
 
-    print('🎉 Örnek veri oluşturma tamamlandı!');
+    debugPrint('🎉 Örnek veri oluşturma tamamlandı!');
   }
 }

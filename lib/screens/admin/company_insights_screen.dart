@@ -45,6 +45,8 @@ class CompanyInsightsScreen extends StatelessWidget {
             riskAlertList: [],
             starPerformers: [],
             strategyMap: {},
+            clustersList: [],
+            lastUpdated: null,
           );
 
           return SingleChildScrollView(
@@ -141,12 +143,65 @@ class CompanyInsightsScreen extends StatelessWidget {
                         title: entry.key,
                         item: entry.value,
                       )),
+                  const SizedBox(height: 24),
+                ],
+
+                // Clusters List
+                if (insights.clustersList.isNotEmpty) ...[
+                  _SectionHeader(
+                    title: 'Kümeler',
+                    icon: Icons.group,
+                    color: AppColors.accent,
+                    count: insights.clustersList.length,
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBackground,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Text(
+                      'Kümeler: ${insights.clustersList.length} adet',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Last Updated
+                if (insights.lastUpdated != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.update,
+                          size: 16,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Son Güncelleme: ${_formatTimestamp(insights.lastUpdated!)}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
 
                 // Empty State
                 if (insights.riskAlertList.isEmpty &&
                     insights.starPerformers.isEmpty &&
-                    insights.strategyMap.isEmpty)
+                    insights.strategyMap.isEmpty &&
+                    insights.clustersList.isEmpty)
                   Center(
                     child: Padding(
                       padding: const EdgeInsets.all(40),
@@ -174,6 +229,24 @@ class CompanyInsightsScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String _formatTimestamp(int timestamp) {
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inMinutes < 1) {
+      return 'Az önce';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes} dakika önce';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours} saat önce';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} gün önce';
+    } else {
+      return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    }
   }
 }
 
@@ -446,6 +519,33 @@ class _StrategyCard extends StatelessWidget {
                   ),
                 );
               }).toList(),
+            ),
+          ],
+          if (item.neden.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: AppColors.warning,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item.neden,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
           if (item.oneri.isNotEmpty) ...[

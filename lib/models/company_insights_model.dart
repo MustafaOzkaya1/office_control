@@ -56,16 +56,19 @@ class StarPerformer {
 
 class StrategyMapItem {
   final List<String> kisiler;
+  final String neden;
   final String oneri;
 
   StrategyMapItem({
     required this.kisiler,
+    required this.neden,
     required this.oneri,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'kisiler': kisiler,
+      'neden': neden,
       'oneri': oneri,
     };
   }
@@ -76,6 +79,7 @@ class StrategyMapItem {
               ?.map((e) => e.toString())
               .toList() ??
           [],
+      neden: map['neden'] as String? ?? '',
       oneri: map['oneri'] as String? ?? '',
     );
   }
@@ -85,11 +89,15 @@ class CompanyInsights {
   final List<RiskAlertPerson> riskAlertList;
   final List<StarPerformer> starPerformers;
   final Map<String, StrategyMapItem> strategyMap;
+  final List<dynamic> clustersList;
+  final int? lastUpdated;
 
   CompanyInsights({
     required this.riskAlertList,
     required this.starPerformers,
     required this.strategyMap,
+    this.clustersList = const [],
+    this.lastUpdated,
   });
 
   Map<String, dynamic> toMap() {
@@ -99,6 +107,8 @@ class CompanyInsights {
       'strategy_map': strategyMap.map(
         (key, value) => MapEntry(key, value.toMap()),
       ),
+      'clusters_list': clustersList,
+      'last_updated': lastUpdated,
     };
   }
 
@@ -108,6 +118,8 @@ class CompanyInsights {
         riskAlertList: [],
         starPerformers: [],
         strategyMap: {},
+        clustersList: [],
+        lastUpdated: null,
       );
     }
 
@@ -138,10 +150,18 @@ class CompanyInsights {
       });
     }
 
+    // Parse clusters_list
+    final clustersList = map['clusters_list'] as List<dynamic>? ?? [];
+
+    // Parse last_updated
+    final lastUpdated = map['last_updated'] as int?;
+
     return CompanyInsights(
       riskAlertList: riskList,
       starPerformers: starList,
       strategyMap: strategyMap,
+      clustersList: clustersList,
+      lastUpdated: lastUpdated,
     );
   }
 }
