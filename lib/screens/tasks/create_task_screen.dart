@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:office_control/models/task_model.dart';
+import 'package:office_control/models/ai_interaction_model.dart';
 import 'package:office_control/providers/task_provider.dart';
+import 'package:office_control/providers/auth_provider.dart';
+import 'package:office_control/services/database_service.dart';
 import 'package:office_control/utils/app_theme.dart';
 import 'package:office_control/widgets/custom_text_field.dart';
 import 'package:office_control/widgets/custom_button.dart';
@@ -21,6 +25,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _descriptionController = TextEditingController();
   TaskDifficulty _selectedDifficulty = TaskDifficulty.medium;
   bool _isLoading = false;
+  final DatabaseService _databaseService = DatabaseService();
+  StreamSubscription<AIPredictResponse?>? _aiResponseSubscription;
+  AIPredictResponse? _aiResponse;
+  bool _isAiLoading = false;
 
   bool get isEditing => widget.taskToEdit != null;
 
@@ -38,7 +46,79 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _aiResponseSubscription?.cancel();
     super.dispose();
+  }
+
+  String _getDifficultyString(TaskDifficulty difficulty) {
+    switch (difficulty) {
+      case TaskDifficulty.easy:
+        return 'easy';
+      case TaskDifficulty.medium:
+        return 'medium';
+      case TaskDifficulty.hard:
+        return 'hard';
+      case TaskDifficulty.veryHard:
+        return 'very_hard';
+    }
+  }
+
+  Future<void> _askAIForPrediction() async {
+    final title = _titleController.text.trim();
+    final description = _descriptionController.text.trim();
+
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lütfen önce görev başlığı girin'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
+    final authProvider = context.read<AuthProvider>();
+    final uid = authProvider.user?.uid;
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kullanıcı bilgisi bulunamadı'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isAiLoading = true;
+      _aiResponse = null;
+    });
+
+    // İsteği gönder
+    final fullDescription = description.isNotEmpty
+        ? '$title. $description'
+        : title;
+
+    await _databaseService.sendAIPredictRequest(
+      uid: uid,
+      description: fullDescription,
+      difficulty: _getDifficultyString(_selectedDifficulty),
+    );
+
+    // Cevabı dinle
+    _aiResponseSubscription?.cancel();
+    _aiResponseSubscription = _databaseService
+        .aiPredictResponseStream(uid)
+        .listen((response) {
+      if (mounted) {
+        setState(() {
+          _aiResponse = response;
+          if (response != null && (response.hasData || response.hasError)) {
+            _isAiLoading = false;
+          }
+        });
+      }
+    });
   }
 
   Future<void> _handleSubmit() async {
@@ -178,6 +258,69 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                // AI Prediction Button
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.psychology,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Bu iş ne kadar sürer?',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _isAiLoading ? null : _askAIForPrediction,
+                        icon: _isAiLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.auto_awesome),
+                        label: Text(_isAiLoading ? 'Analiz ediliyor...' : 'AI\'ya Sor'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                      ),
+                      // AI Response
+                      if (_aiResponse != null) ...[
+                        const SizedBox(height: 12),
+                        _AIResponseWidget(response: _aiResponse!),
+                      ],
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 40),
 
                 // Submit Button
@@ -304,6 +447,94 @@ class _DifficultySelector extends StatelessWidget {
       case TaskDifficulty.veryHard:
         return 'Very\nHard';
     }
+  }
+}
+
+class _AIResponseWidget extends StatelessWidget {
+  final AIPredictResponse response;
+
+  const _AIResponseWidget({required this.response});
+
+  @override
+  Widget build(BuildContext context) {
+    if (response.hasError) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.error.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.error.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                response.error ?? 'Bir hata oluştu',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.error,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (!response.hasData) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.success.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.success.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.check_circle, color: AppColors.success, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'AI Tahmini',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          ),
+          if (response.humanTime != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              response.humanTime!,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+          ],
+          if (response.predictedMinutes != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Yaklaşık ${response.predictedMinutes} dakika',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
+                  ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 

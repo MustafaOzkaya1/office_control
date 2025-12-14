@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -13,7 +14,7 @@ import 'package:office_control/providers/notification_provider.dart';
 import 'package:office_control/screens/tasks/create_task_screen.dart';
 import 'package:office_control/screens/profile/profile_screen.dart';
 import 'package:office_control/screens/settings/settings_screen.dart';
-import 'package:office_control/screens/ai/ai_prediction_screen.dart';
+import 'package:office_control/screens/admin/recommendations_screen.dart';
 import 'package:office_control/services/door_access_service.dart';
 import 'package:office_control/services/location_service.dart';
 import 'package:office_control/services/database_service.dart';
@@ -47,11 +48,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      const _DashboardHome(),
-      const ProfileScreen(),
-      const SettingsScreen(),
-    ];
+    final authProvider = context.watch<AuthProvider>();
+    final isAdmin = authProvider.isAdmin;
+
+    // Admin için 4 sayfa, normal kullanıcı için 3 sayfa
+    final pages = isAdmin
+        ? [
+            const _DashboardHome(),
+            const ProfileScreen(),
+            const RecommendationsScreen(),
+            const SettingsScreen(),
+          ]
+        : [
+            const _DashboardHome(),
+            const ProfileScreen(),
+            const SettingsScreen(),
+          ];
 
     return Scaffold(
       body: pages[_currentIndex],
@@ -66,56 +78,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _currentIndex = index;
             });
           },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
-              label: 'Dashboard',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Profile',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings),
-              label: 'Settings',
-            ),
-          ],
+          type: BottomNavigationBarType.fixed,
+          items: isAdmin
+              ? const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.dashboard_outlined),
+                    activeIcon: Icon(Icons.dashboard),
+                    label: 'Dashboard',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_outline),
+                    activeIcon: Icon(Icons.person),
+                    label: 'Profile',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.lightbulb_outline),
+                    activeIcon: Icon(Icons.lightbulb),
+                    label: 'Öneriler',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.settings_outlined),
+                    activeIcon: Icon(Icons.settings),
+                    label: 'Settings',
+                  ),
+                ]
+              : const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.dashboard_outlined),
+                    activeIcon: Icon(Icons.dashboard),
+                    label: 'Dashboard',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_outline),
+                    activeIcon: Icon(Icons.person),
+                    label: 'Profile',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.settings_outlined),
+                    activeIcon: Icon(Icons.settings),
+                    label: 'Settings',
+                  ),
+                ],
         ),
       ),
       floatingActionButton: _currentIndex == 0
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FloatingActionButton(
-                  heroTag: 'ai_prediction',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const AIPredictionScreen(),
-                      ),
-                    );
-                  },
-                  backgroundColor: AppColors.primary,
-                  child: const Icon(Icons.psychology),
-                ),
-                const SizedBox(height: 12),
-                FloatingActionButton(
-                  heroTag: 'create_task',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const CreateTaskScreen(),
-                      ),
-                    );
-                  },
-                  child: const Icon(Icons.add),
-                ),
-              ],
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateTaskScreen()),
+                );
+              },
+              child: const Icon(Icons.add),
             )
           : null,
     );
@@ -1284,191 +1298,351 @@ class _DifficultyIndicator extends StatelessWidget {
 
 // ==================== AI PERFORMANCE WIDGETS ====================
 
-class _AIPerformanceCard extends StatelessWidget {
+class _AIPerformanceCard extends StatefulWidget {
   final String uid;
 
   const _AIPerformanceCard({required this.uid});
 
   @override
+  State<_AIPerformanceCard> createState() => _AIPerformanceCardState();
+}
+
+class _AIPerformanceCardState extends State<_AIPerformanceCard> {
+  late final DatabaseService _databaseService;
+  StreamSubscription<AIPerformance?>? _subscription;
+  AIPerformance? _currentPerformance;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _databaseService = DatabaseService();
+    _subscribeToPerformance();
+    // Debug: Firebase path'ini kontrol et
+    _debugCheckPath();
+  }
+
+  Future<void> _debugCheckPath() async {
+    // 2 saniye sonra path'i kontrol et (stream başladıktan sonra)
+    Future.delayed(const Duration(seconds: 2), () async {
+      await _databaseService.debugAIPerformancePath(widget.uid);
+    });
+
+    // Her 30 saniyede bir path'i kontrol et (Python backend güncelleme yapmış mı?)
+    Future.delayed(const Duration(seconds: 30), () async {
+      if (mounted && _currentPerformance == null) {
+        debugPrint(
+          '🔄 30 saniye geçti, AI Performance hala null - path kontrol ediliyor...',
+        );
+        await _databaseService.debugAIPerformancePath(widget.uid);
+      }
+    });
+  }
+
+  void _subscribeToPerformance() {
+    _subscription?.cancel();
+    // Real-time stream - her değişiklikte anında güncellenir
+    // Python backend 5-10 saniye içinde güncelleme yapmalı
+    debugPrint(
+      '🎯 AI Performance subscription başlatılıyor - UID: ${widget.uid}',
+    );
+
+    _subscription = _databaseService
+        .aiPerformanceStream(widget.uid)
+        .listen(
+          (performance) {
+            debugPrint(
+              '📨 AI Performance stream event: ${performance != null ? "DATA GELDİ" : "NULL"}',
+            );
+            if (performance != null) {
+              debugPrint('📊 Stream\'den gelen veriler:');
+              debugPrint('   dailyScore: ${performance.dailyScore}');
+              debugPrint('   generalScoreXp: ${performance.generalScoreXp}');
+              debugPrint('   careerLevel: ${performance.careerLevel}');
+              debugPrint('   speedLabel: ${performance.speedLabel}');
+              debugPrint('   dailyMood: ${performance.dailyMood}');
+            }
+            if (mounted) {
+              debugPrint('🔄 setState çağrılıyor - mounted: true');
+              setState(() {
+                _currentPerformance = performance;
+                _isLoading = false;
+              });
+              debugPrint('✅ setState tamamlandı');
+              // Debug: Güncelleme geldiğinde log
+              if (performance != null) {
+                debugPrint(
+                  '✅ AI Performance Updated: Score=${performance.dailyScore}, XP=${performance.generalScoreXp}, Level=${performance.careerLevel}',
+                );
+                debugPrint('   → Widget rebuild edilmeli!');
+              } else {
+                debugPrint(
+                  '⚠️ AI Performance null - Firebase\'de veri yok veya henüz oluşturulmamış',
+                );
+              }
+            } else {
+              debugPrint('⚠️ Widget mounted değil, setState çağrılmadı');
+            }
+          },
+          onError: (error) {
+            debugPrint('❌ AI Performance Stream Error: $error');
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
+          },
+          cancelOnError: false, // Hata olsa bile stream'i dinlemeye devam et
+        );
+
+    debugPrint('✅ AI Performance subscription aktif');
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final databaseService = DatabaseService();
+    if (_isLoading) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    return StreamBuilder<AIPerformance?>(
-      stream: databaseService.aiPerformanceStream(uid),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data == null) {
-          return Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Center(
-              child: Text(
-                'AI Analizi Bekleniyor...',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-              ),
-            ),
-          );
-        }
-
-        final performance = snapshot.data!;
-
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
+    if (_currentPerformance == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Center(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.auto_awesome,
-                      color: AppColors.accent,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'AI Performans Analizi',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                ],
+              Icon(
+                Icons.analytics_outlined,
+                size: 48,
+                color: AppColors.textMuted,
               ),
-              const SizedBox(height: 20),
-              // Günlük Skor
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Günlük Skor',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                  Text(
-                    '${performance.dailyScore.toStringAsFixed(1)}',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                ],
+              const SizedBox(height: 12),
+              Text(
+                'AI Analizi Bekleniyor...',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
               ),
-              const SizedBox(height: 16),
-              // XP ve Seviye
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatItem(
-                      label: 'XP',
-                      value: '${performance.generalScoreXp}',
-                      icon: Icons.stars,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatItem(
-                      label: 'Seviye',
-                      value: performance.careerLevel,
-                      icon: Icons.trending_up,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 4),
+              Text(
+                'Görev tamamladığınızda veriler güncellenecek',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
-              // Hız ve Ruh Hali
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatItem(
-                      label: 'Hız Durumu',
-                      value: performance.speedLabel,
-                      icon: Icons.speed,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatItem(
-                      label: 'Ruh Hali',
-                      value: performance.dailyMood,
-                      icon: Icons.mood,
-                    ),
-                  ),
-                ],
-              ),
-              // Öneriler
-              if (performance.actionItems.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                const Divider(),
-                const SizedBox(height: 12),
-                Text(
-                  'Öneriler',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                ...performance.actionItems.map((item) => Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppColors.border,
-                        ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.lightbulb_outline,
-                            size: 18,
-                            color: AppColors.accent,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              item,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
-              ],
             ],
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    final performance = _currentPerformance!;
+
+    // Debug: Widget render edilirken değerleri logla
+    debugPrint('🎨 AI Performance Card RENDER:');
+    debugPrint('   dailyScore: ${performance.dailyScore}');
+    debugPrint('   generalScoreXp: ${performance.generalScoreXp}');
+    debugPrint('   careerLevel: ${performance.careerLevel}');
+    debugPrint('   speedLabel: ${performance.speedLabel}');
+    debugPrint('   dailyMood: ${performance.dailyMood}');
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: AppColors.accent,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'AI Performans Analizi',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Günlük Skor
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Günlük Skor',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                performance.dailyScore.toStringAsFixed(1),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: performance.dailyScore > 0
+                      ? AppColors.accent
+                      : AppColors.textMuted,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // XP ve Seviye
+          Row(
+            children: [
+              Expanded(
+                child: _StatItem(
+                  label: 'XP',
+                  value: performance.generalScoreXp.toString(),
+                  icon: Icons.stars,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _StatItem(
+                  label: 'Seviye',
+                  value: performance.careerLevel,
+                  icon: Icons.trending_up,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Hız ve Ruh Hali
+          Row(
+            children: [
+              Expanded(
+                child: _StatItem(
+                  label: 'Hız Durumu',
+                  value: performance.speedLabel,
+                  icon: Icons.speed,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _StatItem(
+                  label: 'Ruh Hali',
+                  value: performance.dailyMood,
+                  icon: Icons.mood,
+                ),
+              ),
+            ],
+          ),
+          // Cluster Role (eğer varsa)
+          if (performance.clusterRole != null &&
+              performance.clusterRole!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.accent.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.group_work, size: 20, color: AppColors.accent),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Rol',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          performance.clusterRole!,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.accent,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          // Öneriler
+          if (performance.actionItems.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 12),
+            Text('Öneriler', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            ...performance.actionItems.map(
+              (item) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.lightbulb_outline,
+                      size: 18,
+                      color: AppColors.accent,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -1502,18 +1676,18 @@ class _StatItem extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.textMuted,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: AppColors.textMuted),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

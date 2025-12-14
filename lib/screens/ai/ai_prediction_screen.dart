@@ -357,10 +357,10 @@ class _ResponseCard extends StatelessWidget {
               ),
             ),
           ],
-          if (response.estimatedMinutes != null) ...[
+          if (response.predictedMinutes != null) ...[
             const SizedBox(height: 12),
             Text(
-              'Yaklaşık ${response.estimatedMinutes} dakika',
+              'Yaklaşık ${response.predictedMinutes} dakika',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),

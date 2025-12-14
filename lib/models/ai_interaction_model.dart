@@ -31,14 +31,18 @@ class AIPredictRequest {
 }
 
 class AIPredictResponse {
-  final String? humanTime; // Örn: "4 saat 30 dk"
-  final int? estimatedMinutes;
+  final String? humanTime; // Örn: "4 saat 30 dk" veya "9sa 49dk"
+  final int? predictedMinutes; // Örn: 589
+  final String? category; // Örn: "Architecture & DevOps"
+  final int? processedAt; // Timestamp
   final String? status;
   final String? error;
 
   AIPredictResponse({
     this.humanTime,
-    this.estimatedMinutes,
+    this.predictedMinutes,
+    this.category,
+    this.processedAt,
     this.status,
     this.error,
   });
@@ -46,7 +50,9 @@ class AIPredictResponse {
   Map<String, dynamic> toMap() {
     return {
       'human_time': humanTime,
-      'estimated_minutes': estimatedMinutes,
+      'predicted_minutes': predictedMinutes,
+      'category': category,
+      'processed_at': processedAt,
       'status': status,
       'error': error,
     };
@@ -58,13 +64,18 @@ class AIPredictResponse {
     }
     return AIPredictResponse(
       humanTime: map['human_time'] as String?,
-      estimatedMinutes: (map['estimated_minutes'] as num?)?.toInt(),
+      predictedMinutes: (map['predicted_minutes'] as num?)?.toInt(),
+      category: map['category'] as String?,
+      processedAt: (map['processed_at'] as num?)?.toInt(),
       status: map['status'] as String?,
       error: map['error'] as String?,
     );
   }
 
-  bool get hasData => humanTime != null || estimatedMinutes != null;
+  bool get hasData =>
+      humanTime != null ||
+      predictedMinutes != null ||
+      category != null;
   bool get hasError => error != null;
 }
 

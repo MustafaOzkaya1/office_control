@@ -5,6 +5,7 @@ class AIPerformance {
   final String speedLabel;
   final String dailyMood;
   final List<String> actionItems;
+  final String? clusterRole; // 🧘 Derin Odak (Teknik/Yazılım) gibi
 
   AIPerformance({
     required this.dailyScore,
@@ -13,6 +14,7 @@ class AIPerformance {
     required this.speedLabel,
     required this.dailyMood,
     required this.actionItems,
+    this.clusterRole,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class AIPerformance {
       'speed_label': speedLabel,
       'daily_mood': dailyMood,
       'action_items': actionItems,
+      if (clusterRole != null) 'cluster_role': clusterRole,
     };
   }
 
@@ -33,10 +36,12 @@ class AIPerformance {
       careerLevel: map['career_level'] as String? ?? 'Başlangıç',
       speedLabel: map['speed_label'] as String? ?? 'Normal',
       dailyMood: map['daily_mood'] as String? ?? 'Normal',
-      actionItems: (map['action_items'] as List<dynamic>?)
+      actionItems:
+          (map['action_items'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
+      clusterRole: map['cluster_role'] as String?,
     );
   }
 
@@ -47,6 +52,7 @@ class AIPerformance {
     String? speedLabel,
     String? dailyMood,
     List<String>? actionItems,
+    String? clusterRole,
   }) {
     return AIPerformance(
       dailyScore: dailyScore ?? this.dailyScore,
@@ -55,7 +61,7 @@ class AIPerformance {
       speedLabel: speedLabel ?? this.speedLabel,
       dailyMood: dailyMood ?? this.dailyMood,
       actionItems: actionItems ?? this.actionItems,
+      clusterRole: clusterRole ?? this.clusterRole,
     );
   }
 }
-
